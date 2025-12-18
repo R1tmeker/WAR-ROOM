@@ -18,40 +18,55 @@ const mapError = (error) => {
   return 'Неизвестная ошибка запроса'
 }
 
+const throwable = async (fn) => {
+  try {
+    return await fn()
+  } catch (error) {
+    const message = mapError(error)
+    throw new Error(message)
+  }
+}
+
 export const api = {
-  async listPosts() {
-    try {
-      const { data } = await client.get('/posts?_limit=8')
-      return { data }
-    } catch (error) {
-      return { error: mapError(error) }
-    }
+  listPosts(limit = 12) {
+    return throwable(async () => {
+      const { data } = await client.get(`/posts?_limit=${limit}`)
+      return data
+    })
   },
 
-  async createPost(payload) {
-    try {
+  createPost(payload) {
+    return throwable(async () => {
       const { data } = await client.post('/posts', payload)
-      return { data }
-    } catch (error) {
-      return { error: mapError(error) }
-    }
+      return data
+    })
   },
 
-  async updatePost(id, payload) {
-    try {
+  updatePost(id, payload) {
+    return throwable(async () => {
       const { data } = await client.patch(`/posts/${id}`, payload)
-      return { data }
-    } catch (error) {
-      return { error: mapError(error) }
-    }
+      return data
+    })
   },
 
-  async deletePost(id) {
-    try {
+  deletePost(id) {
+    return throwable(async () => {
       await client.delete(`/posts/${id}`)
-      return { data: true }
-    } catch (error) {
-      return { error: mapError(error) }
-    }
+      return true
+    })
+  },
+
+  listUsers() {
+    return throwable(async () => {
+      const { data } = await client.get('/users')
+      return data
+    })
+  },
+
+  getUser(id) {
+    return throwable(async () => {
+      const { data } = await client.get(`/users/${id}`)
+      return data
+    })
   },
 }

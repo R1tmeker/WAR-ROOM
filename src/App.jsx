@@ -1,14 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
-import { api } from './api'
+import { useMemo, useState } from 'react'
 import { PostForm } from './components/PostForm'
 import { PostList } from './components/PostList'
 import { Spinner } from './components/Spinner'
+import {
+  useCreatePost,
+  useDeletePost,
+  usePosts,
+  usePrefetchPosts,
+  useUpdatePost,
+} from './hooks/usePosts'
 
 export default function App() {
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [action, setAction] = useState(null)
+  const { data: posts = [], isLoading, isFetching, isError, error, refetch } = usePosts()
+
+  const createPost = useCreatePost()
+  const updatePost = useUpdatePost()
+  const deletePost = useDeletePost()
+  const prefetchPosts = usePrefetchPosts()
 
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState({ title: '', body: '' })
@@ -18,35 +26,8 @@ export default function App() {
     [posts],
   )
 
-  const loadPosts = async () => {
-    setLoading(true)
-    setError(null)
-    setAction({ type: 'load' })
-    const { data, error: apiError } = await api.listPosts()
-    if (apiError) {
-      setError(apiError)
-    } else {
-      setPosts(data)
-    }
-    setAction(null)
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadPosts()
-  }, [])
-
-  const handleCreate = async ({ title, body }) => {
-    setError(null)
-    setAction({ type: 'create' })
-    const payload = { title, body, userId: 1 }
-    const { data, error: apiError } = await api.createPost(payload)
-    if (apiError) {
-      setError(apiError)
-    } else {
-      setPosts((prev) => [{ ...payload, id: data.id ?? Date.now() }, ...prev])
-    }
-    setAction(null)
+  const handleCreate = ({ title, body, userId }) => {
+    createPost.mutate({ title, body, userId: Number(userId) || 1 })
   }
 
   const startEdit = (post) => {
@@ -63,34 +44,26 @@ export default function App() {
     setEditDraft((prev) => ({ ...prev, [key]: value }))
   }
 
-  const handleSaveEdit = async (id) => {
-    setError(null)
-    setAction({ type: 'update', id })
-    const { data, error: apiError } = await api.updatePost(id, editDraft)
-    if (apiError) {
-      setError(apiError)
-    } else {
-      setPosts((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, ...editDraft, ...(data || {}) } : p)),
-      )
-      cancelEdit()
-    }
-    setAction(null)
+  const handleSaveEdit = (id) => {
+    updatePost.mutate({ id, payload: editDraft })
+    cancelEdit()
   }
 
-  const handleDelete = async (id) => {
-    setError(null)
-    setAction({ type: 'delete', id })
-    const { error: apiError } = await api.deletePost(id)
-    if (apiError) {
-      setError(apiError)
-    } else {
-      setPosts((prev) => prev.filter((p) => p.id !== id))
-    }
-    setAction(null)
+  const handleDelete = (id) => {
+    deletePost.mutate(id)
   }
 
-  const isBusy = Boolean(action)
+  const currentAction = useMemo(() => {
+    if (updatePost.isPending) return { type: 'update', id: updatePost.variables?.id }
+    if (deletePost.isPending) return { type: 'delete', id: deletePost.variables }
+    if (createPost.isPending) return { type: 'create' }
+    if (isFetching) return { type: 'load' }
+    return null
+  }, [createPost.isPending, deletePost.isPending, deletePost.variables, isFetching, updatePost.isPending, updatePost.variables])
+
+  const isBusy = createPost.isPending || updatePost.isPending || deletePost.isPending
+  const showLoading = isLoading || isFetching
+  const combinedError = error?.message || createPost.error?.message || updatePost.error?.message || deletePost.error?.message
 
   return (
     <div className="app-shell">
@@ -100,8 +73,8 @@ export default function App() {
           <p className="subtitle">GET / POST / PATCH / DELETE в действии (JSONPlaceholder)</p>
         </div>
         <div className="controls">
-          <button onClick={loadPosts} disabled={loading}>
-            {loading ? (
+          <button onClick={() => refetch()} onMouseEnter={prefetchPosts} disabled={isLoading}>
+            {showLoading ? (
               <span className="row" style={{ alignItems: 'center' }}>
                 <Spinner /> Обновление...
               </span>
@@ -116,16 +89,17 @@ export default function App() {
 
       <div className="status-bar">
         <p className="status-text">
-          {loading
-            ? 'Загрузка...' 
+          {showLoading
+            ? 'Загрузка...'
             : isBusy
-              ? 'Выполняется запрос...' 
+              ? 'Выполняется запрос...'
               : 'Готов к работе'}
         </p>
-        {action?.type && <span className="badge">{action.type.toUpperCase()}</span>}
+        {currentAction?.type && <span className="badge">{currentAction.type.toUpperCase()}</span>}
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {isError && combinedError && <div className="error">{combinedError}</div>}
+      {!isError && combinedError && <div className="error">{combinedError}</div>}
 
       <PostList
         posts={sortedPosts}
@@ -136,7 +110,7 @@ export default function App() {
         onSaveEdit={handleSaveEdit}
         onCancelEdit={cancelEdit}
         onDelete={handleDelete}
-        action={action}
+        action={currentAction}
       />
     </div>
   )

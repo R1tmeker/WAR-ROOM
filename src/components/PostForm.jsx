@@ -1,13 +1,25 @@
 import { useState } from 'react'
+import { Spinner } from './Spinner'
+import { useUsers } from '../hooks/useUsers'
+import { useProfile } from '../hooks/useProfile'
 
 export function PostForm({ onSubmit, disabled }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [userId, setUserId] = useState(1)
+
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    isError: usersError,
+  } = useUsers()
+
+  const { data: profile } = useProfile(userId)
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!title.trim() || !body.trim()) return
-    onSubmit({ title, body })
+    onSubmit({ title, body, userId })
     setTitle('')
     setBody('')
   }
@@ -39,8 +51,41 @@ export function PostForm({ onSubmit, disabled }) {
           disabled={disabled}
         />
       </div>
+
+      <div className="input-group">
+        <label htmlFor="author">Автор (userId)</label>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <select
+            id="author"
+            value={userId}
+            onChange={(e) => setUserId(Number(e.target.value))}
+            disabled={disabled || usersLoading || usersError}
+          >
+            {usersLoading && <option>Загрузка...</option>}
+            {usersError && <option>Ошибка загрузки пользователей</option>}
+            {!usersLoading && !usersError &&
+              users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+          </select>
+          {profile && !usersLoading && !usersError && (
+            <span className="badge" title={profile.email}>
+              @{profile.username}
+            </span>
+          )}
+        </div>
+      </div>
+
       <button type="submit" disabled={disabled}>
-        Отправить
+        {disabled ? (
+          <span className="row" style={{ alignItems: 'center' }}>
+            <Spinner size={16} /> Отправка...
+          </span>
+        ) : (
+          'Отправить'
+        )}
       </button>
     </form>
   )
