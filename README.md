@@ -1,6 +1,6 @@
 # WAR ROOM
 
-Учебный React-проект, демонстрирующий работу с HTTP-методами (GET, POST, PATCH, DELETE) через публичный API JSONPlaceholder. Используется `axios`, запросы вынесены в отдельный модуль `src/api`. Проект интегрирован с **React Query (@tanstack/react-query)** и **Redux Toolkit** для глобального состояния и асинхронных операций.
+Учебный React-проект, демонстрирующий работу с HTTP-методами (GET, POST, PATCH, DELETE) через публичный API JSONPlaceholder. Используется `axios`, запросы вынесены в `src/infrastructure/api`. Проект интегрирован с **React Query (@tanstack/react-query)** и **Redux Toolkit** для глобального состояния и асинхронных операций.
 
 ## Возможности
 - Загрузка списка постов (GET `/posts`)
@@ -25,7 +25,7 @@
 3. Откройте адрес из консоли (обычно http://localhost:5173).
 
 ## React Query
-- Подключение провайдера: `QueryClientProvider` в `src/main.jsx` с базовыми настройками `staleTime`, `cacheTime`, `retry`.
+- Подключение провайдера: `AppProviders` (`app/providers/AppProviders.jsx`) оборачивает Redux + React Query с базовыми настройками `staleTime`, `cacheTime`, `retry`.
 - DevTools: `ReactQueryDevtools` в режиме разработки.
 - Ключи запросов:
    - `['posts']` — список постов (рефетч каждую минуту, сортировка в `select`).
@@ -37,19 +37,25 @@
 - Dependent queries: профиль пользователя подгружается только при выбранном `userId` (`enabled`).
 - Опции `select` используются для сортировки и уменьшения лишних ререндеров.
 
-## Структура
-- `src/api/index.js` — функции для работы с API (axios).
-- `src/components` — UI-компоненты (список, форма, спиннер).
-- `src/App.jsx` — логика интеграции запросов в интерфейс.
-- `src/store` — Redux Toolkit: store, хуки, slices (posts, users, ui), селекторы.
-- `src/hooks` — (исторически) React Query хуки; основные данные теперь идут через Redux Toolkit.
+## Структура (Layered)
+- `src/app` — инициализация (провайдеры: Redux, React Query).
+- `src/presentation/pages` — страницы (например, `App.jsx`).
+- `src/presentation/components` — UI-компоненты (список, форма, спиннер).
+- `src/application/store` — Redux Toolkit: store, хуки, slices (posts, users, ui), селекторы.
+- `src/application/hooks` — бизнес-хуки (React Query и др.).
+- `src/infrastructure/api` — функции для работы с API (axios + обработка ошибок).
+- `src/shared` — (зарезервировано) утилиты/константы/общие ui.
 
 ## Redux Toolkit
-- Store в `src/store/index.js`, Provider в `src/main.jsx`.
+- Store в `src/application/store/index.js`, Provider в `app/providers/AppProviders.jsx`.
 - Slices: `posts` (CRUD + pending/error), `users` (список авторов), `ui` (editingId, editDraft, selectedUserId).
 - Async thunks: `fetchPosts`, `createPost`, `updatePost`, `deletePost`, `fetchUsers`.
 - Селекторы: мемоизированные `selectSortedFilteredPosts`, `selectIsLoading`, `selectPendingAction`, `selectUsers` и др.
 - Интеграция в компоненты: `App.jsx` и `PostForm.jsx` используют `useAppDispatch/useAppSelector` вместо локальных useState/useEffect для данных постов и пользователей.
+
+## Архитектура
+- Подход: Layered (presentation / application / infrastructure + app и shared).
+- Документация: `ARCHITECTURE.md` (описание слоёв, правил импортов) и `NAMING_GUIDELINES.md` (конвенции именования).
 
 ## Заметки
 API JSONPlaceholder — муляж: данные на сервере не сохраняются, но ответы эмулируются, что удобно для отработки HTTP-методов.
