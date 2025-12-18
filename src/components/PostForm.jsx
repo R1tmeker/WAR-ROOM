@@ -1,20 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Spinner } from './Spinner'
-import { useUsers } from '../hooks/useUsers'
-import { useProfile } from '../hooks/useProfile'
+import { useAppDispatch, useAppSelector } from '../store/hooks'
+import { fetchUsers } from '../store/slices/usersSlice'
+import { selectUsers, selectUsersError, selectUsersStatus } from '../store/selectors/usersSelectors'
+import { selectSelectedUserId } from '../store/selectors/uiSelectors'
+import { setSelectedUserId } from '../store/slices/uiSlice'
 
 export function PostForm({ onSubmit, disabled }) {
+  const dispatch = useAppDispatch()
+
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [userId, setUserId] = useState(1)
 
-  const {
-    data: users = [],
-    isLoading: usersLoading,
-    isError: usersError,
-  } = useUsers()
+  const users = useAppSelector(selectUsers)
+  const usersStatus = useAppSelector(selectUsersStatus)
+  const usersError = useAppSelector(selectUsersError)
+  const userId = useAppSelector(selectSelectedUserId)
 
-  const { data: profile } = useProfile(userId)
+  useEffect(() => {
+    if (usersStatus === 'idle') {
+      dispatch(fetchUsers())
+    }
+  }, [dispatch, usersStatus])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -58,21 +65,21 @@ export function PostForm({ onSubmit, disabled }) {
           <select
             id="author"
             value={userId}
-            onChange={(e) => setUserId(Number(e.target.value))}
-            disabled={disabled || usersLoading || usersError}
+            onChange={(e) => dispatch(setSelectedUserId(Number(e.target.value)))}
+            disabled={disabled || usersStatus === 'loading' || usersError}
           >
-            {usersLoading && <option>Загрузка...</option>}
-            {usersError && <option>Ошибка загрузки пользователей</option>}
-            {!usersLoading && !usersError &&
+            {usersStatus === 'loading' && <option>Загрузка...</option>}
+            {usersStatus === 'failed' && <option>Ошибка загрузки пользователей</option>}
+            {usersStatus !== 'loading' && !usersError &&
               users.map((user) => (
                 <option key={user.id} value={user.id}>
                   {user.name}
                 </option>
               ))}
           </select>
-          {profile && !usersLoading && !usersError && (
-            <span className="badge" title={profile.email}>
-              @{profile.username}
+          {usersStatus === 'succeeded' && !usersError && users.length > 0 && (
+            <span className="badge">
+              user #{userId}
             </span>
           )}
         </div>

@@ -1,69 +1,58 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { PostForm } from './components/PostForm'
 import { PostList } from './components/PostList'
 import { Spinner } from './components/Spinner'
-import {
-  useCreatePost,
-  useDeletePost,
-  usePosts,
-  usePrefetchPosts,
-  useUpdatePost,
-} from './hooks/usePosts'
+import { useAppDispatch, useAppSelector } from './store/hooks'
+import { fetchPosts, createPost, updatePost, deletePost } from './store/slices/postsSlice'
+import { selectSortedFilteredPosts, selectIsLoading, selectPendingAction, selectPostsError } from './store/selectors/postsSelectors'
+import { selectEditDraft, selectEditingId } from './store/selectors/uiSelectors'
+import { cancelEdit, setEditField, startEdit } from './store/slices/uiSlice'
 
 export default function App() {
-  const { data: posts = [], isLoading, isFetching, isError, error, refetch } = usePosts()
+  const dispatch = useAppDispatch()
 
-  const createPost = useCreatePost()
-  const updatePost = useUpdatePost()
-  const deletePost = useDeletePost()
-  const prefetchPosts = usePrefetchPosts()
+  const posts = useAppSelector(selectSortedFilteredPosts)
+  const isLoading = useAppSelector(selectIsLoading)
+  const pendingAction = useAppSelector(selectPendingAction)
+  const error = useAppSelector(selectPostsError)
 
-  const [editingId, setEditingId] = useState(null)
-  const [editDraft, setEditDraft] = useState({ title: '', body: '' })
+  const editingId = useAppSelector(selectEditingId)
+  const editDraft = useAppSelector(selectEditDraft)
 
-  const sortedPosts = useMemo(
-    () => [...posts].sort((a, b) => b.id - a.id),
-    [posts],
-  )
+  useEffect(() => {
+    dispatch(fetchPosts())
+  }, [dispatch])
 
   const handleCreate = ({ title, body, userId }) => {
-    createPost.mutate({ title, body, userId: Number(userId) || 1 })
+    dispatch(createPost({ title, body, userId: Number(userId) || 1 }))
   }
 
-  const startEdit = (post) => {
-    setEditingId(post.id)
-    setEditDraft({ title: post.title, body: post.body })
+  const handleStartEdit = (post) => {
+    dispatch(startEdit({ id: post.id, title: post.title, body: post.body }))
   }
 
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEditDraft({ title: '', body: '' })
+  const handleCancelEdit = () => {
+    dispatch(cancelEdit())
   }
 
   const handleEditField = (key, value) => {
-    setEditDraft((prev) => ({ ...prev, [key]: value }))
+    dispatch(setEditField({ key, value }))
   }
 
   const handleSaveEdit = (id) => {
-    updatePost.mutate({ id, payload: editDraft })
-    cancelEdit()
+    dispatch(updatePost({ id, payload: editDraft }))
+    dispatch(cancelEdit())
   }
 
   const handleDelete = (id) => {
-    deletePost.mutate(id)
+    dispatch(deletePost(id))
   }
 
-  const currentAction = useMemo(() => {
-    if (updatePost.isPending) return { type: 'update', id: updatePost.variables?.id }
-    if (deletePost.isPending) return { type: 'delete', id: deletePost.variables }
-    if (createPost.isPending) return { type: 'create' }
-    if (isFetching) return { type: 'load' }
-    return null
-  }, [createPost.isPending, deletePost.isPending, deletePost.variables, isFetching, updatePost.isPending, updatePost.variables])
-
-  const isBusy = createPost.isPending || updatePost.isPending || deletePost.isPending
-  const showLoading = isLoading || isFetching
-  const combinedError = error?.message || createPost.error?.message || updatePost.error?.message || deletePost.error?.message
+  const isBusy = Boolean(pendingAction && pendingAction.type !== 'load')
+  const currentAction = useMemo(() => pendingAction, [pendingAction])
+  const showLoading = isLoading
+  const combinedError = error
+  const sortedPosts = posts
 
   return (
     <div className="app-shell">
@@ -73,7 +62,7 @@ export default function App() {
           <p className="subtitle">GET / POST / PATCH / DELETE в действии (JSONPlaceholder)</p>
         </div>
         <div className="controls">
-          <button onClick={() => refetch()} onMouseEnter={prefetchPosts} disabled={isLoading}>
+          <button onClick={() => dispatch(fetchPosts())} disabled={isLoading}>
             {showLoading ? (
               <span className="row" style={{ alignItems: 'center' }}>
                 <Spinner /> Обновление...
@@ -105,10 +94,10 @@ export default function App() {
         posts={sortedPosts}
         editingId={editingId}
         editDraft={editDraft}
-        onStartEdit={startEdit}
+        onStartEdit={handleStartEdit}
         onEditField={handleEditField}
         onSaveEdit={handleSaveEdit}
-        onCancelEdit={cancelEdit}
+        onCancelEdit={handleCancelEdit}
         onDelete={handleDelete}
         action={currentAction}
       />

@@ -1,6 +1,6 @@
 # WAR ROOM
 
-Учебный React-проект, демонстрирующий работу с HTTP-методами (GET, POST, PATCH, DELETE) через публичный API JSONPlaceholder. Используется `axios`, запросы вынесены в отдельный модуль `src/api`. Теперь проект интегрирован с **React Query (@tanstack/react-query)** для кэширования, мутаций и оптимистичных обновлений.
+Учебный React-проект, демонстрирующий работу с HTTP-методами (GET, POST, PATCH, DELETE) через публичный API JSONPlaceholder. Используется `axios`, запросы вынесены в отдельный модуль `src/api`. Проект интегрирован с **React Query (@tanstack/react-query)** и **Redux Toolkit** для глобального состояния и асинхронных операций.
 
 ## Возможности
 - Загрузка списка постов (GET `/posts`)
@@ -11,6 +11,7 @@
 - Кэширование и управление состояниями запроса через React Query
 - Оптимистичные обновления для создания/редактирования/удаления постов
 - React Query DevTools в режиме разработки
+- Глобальное состояние через Redux Toolkit (посты, пользователи, состояние редактирования), мемо-селекторы, createAsyncThunk
 
 ## Запуск
 1. Установите зависимости:
@@ -40,7 +41,15 @@
 - `src/api/index.js` — функции для работы с API (axios).
 - `src/components` — UI-компоненты (список, форма, спиннер).
 - `src/App.jsx` — логика интеграции запросов в интерфейс.
-- `src/hooks` — React Query хуки (`usePosts`, `useUsers`, `useProfile`, префетчинг и мутации).
+- `src/store` — Redux Toolkit: store, хуки, slices (posts, users, ui), селекторы.
+- `src/hooks` — (исторически) React Query хуки; основные данные теперь идут через Redux Toolkit.
+
+## Redux Toolkit
+- Store в `src/store/index.js`, Provider в `src/main.jsx`.
+- Slices: `posts` (CRUD + pending/error), `users` (список авторов), `ui` (editingId, editDraft, selectedUserId).
+- Async thunks: `fetchPosts`, `createPost`, `updatePost`, `deletePost`, `fetchUsers`.
+- Селекторы: мемоизированные `selectSortedFilteredPosts`, `selectIsLoading`, `selectPendingAction`, `selectUsers` и др.
+- Интеграция в компоненты: `App.jsx` и `PostForm.jsx` используют `useAppDispatch/useAppSelector` вместо локальных useState/useEffect для данных постов и пользователей.
 
 ## Заметки
 API JSONPlaceholder — муляж: данные на сервере не сохраняются, но ответы эмулируются, что удобно для отработки HTTP-методов.
