@@ -58,6 +58,11 @@ const postsSlice = createSlice({
     clearError(state) {
       state.error = null
     },
+    clearPosts(state) {
+      state.items = []
+      state.error = null
+      state.status = 'idle'
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -127,5 +132,5 @@ const postsSlice = createSlice({
   },
 })
 
-export const { setFilter, clearError } = postsSlice.actions
+export const { setFilter, clearError, clearPosts } = postsSlice.actions
 export default postsSlice.reducer

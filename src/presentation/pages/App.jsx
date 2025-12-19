@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { PostForm } from '../components/PostForm'
 import { PostList } from '../components/PostList'
+import { PostsActions } from '../components/PostsActions'
 import { Spinner } from '../components/Spinner'
 import { useAppDispatch, useAppSelector } from '../../application/store/hooks'
 import { fetchPosts, createPost, updatePost, deletePost } from '../../application/store/slices/postsSlice'
@@ -81,6 +82,8 @@ export default function App() {
       </header>
 
       <PostForm onSubmit={handleCreate} disabled={isBusy} />
+
+      <PostsActions />
 
       <div className="status-bar">
         <p className="status-text">
